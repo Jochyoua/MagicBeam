@@ -4,7 +4,6 @@ import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
-import org.bukkit.Sound;
 import org.bukkit.block.Beacon;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
@@ -13,13 +12,37 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
 public class BeamMeScottie extends JavaPlugin {
+    private static BeamMeScottie plugin;
+    List<UUID> players = new ArrayList<>();
+
+    private static BeamMeScottie getInstance() {
+        return plugin;
+    }
+
+    public Block isInBeacon(Player player) {
+        for (int y = player.getLocation().getBlockY(); y >= 0; y--) {
+            Block b = player.getLocation().getWorld().getBlockAt(player.getLocation().getBlockX(), y, player.getLocation().getBlockZ());
+            if (b.getType() == Material.BEACON && getConfig().isSet("beacons." + b.getX())
+                    && !(((Beacon) b.getState()).getTier() == 0 && getConfig().getBoolean("settings.require beacons to be active"))) {
+                return b;
+            }
+        }
+        return null;
+    }
+
     @Override
     public void onEnable() {
+        plugin = this;
         saveDefaultConfig();
         getConfig().options().header(
                 "MagicBeam v" + getDescription().getVersion() + " by Jochyoua\n"
@@ -33,45 +56,45 @@ public class BeamMeScottie extends JavaPlugin {
             new Metrics(this);
         }
         // Time to load in some listener events!! :)
-
         getServer().getPluginManager().registerEvents(new Listener() {
+            @EventHandler
+            public void fallDamage(EntityDamageEvent e) {
+                if (!(e.getEntity() instanceof Player) || !getConfig().getBoolean("settings.prevent players from taking damage"))
+                    return;
+                Player player = (Player) e.getEntity();
+                if (players.contains(player.getUniqueId()) || isInBeacon(player) != null) {
+                    e.setCancelled(true);
+                }
+            }
+
             @EventHandler
             public void onPlayerMove(PlayerMoveEvent e) {
                 Player player = e.getPlayer();
                 boolean permission;
-                if (getConfig().getString("settings.permission").equalsIgnoreCase("none"))
+                if (players.contains(player.getUniqueId()) && player.isOnGround() && getConfig().getBoolean("settings.prevent players from taking damage")) {
+                    players.remove(player.getUniqueId());
+                }
+                if (getConfig().getString("settings.permission.use beams").equalsIgnoreCase("none"))
                     permission = true;
                 else
-                    permission = player.hasPermission(getConfig().getString("settings.permission"));
+                    permission = player.hasPermission(getConfig().getString("settings.permission.use beams"));
                 if (permission) {
-                    for (int y = player.getLocation().getBlockY(); y >= 0; y--) {
-                        Block b = player.getLocation().getWorld().getBlockAt(player.getLocation().getBlockX(), y, player.getLocation().getBlockZ());
-                        if (b.getType() == Material.BEACON) {
-                            reloadConfig();
-                            if (getConfig().isSet("beacons." + b.getX())) {
-                                if(((Beacon)b.getState()).getTier() == 0 && getConfig().getBoolean("settings.require beacons to be active")){
-                                    return;
-                                }
-                                Vector vel = player.getVelocity();
-                                if(player.isSneaking() && getConfig().getBoolean("settings.shift makes players go down")){
-                                    vel.setX(getConfig().getDouble("beacons."+b.getX()+".Vector X (holding shift)", 0));
-                                    vel.setY(getConfig().getDouble("beacons."+b.getX()+".Vector Y (holding shift)", -.2));
-                                    vel.setZ(getConfig().getDouble("beacons."+b.getX()+".Vector Z (holding shift)", 0));
-                                }else{
-                                    vel.setX(getConfig().getDouble("beacons." + b.getX() + ".Vector X", 0));
-                                    vel.setY(getConfig().getDouble("beacons." + b.getX() + ".Vector Y", 1));
-                                    vel.setZ(getConfig().getDouble("beacons." + b.getX() + ".Vector Z", 0));
-                                }
-                                player.setVelocity(vel);
-                                if (!getConfig().getString("settings.sound").equalsIgnoreCase("none")) {
-                                    try {
-                                        player.playSound(player.getLocation(), Sound.valueOf(getConfig().getString("settings.sound")), 1, 1);
-                                    } catch (Throwable ohno) {
-                                        send(Bukkit.getConsoleSender(), getConfig().getString("variables.failed to play sound"));
-                                    }
-                                }
-                            }
+                    reloadConfig();
+                    if (isInBeacon(player) != null) {
+                        Block b = isInBeacon(player);
+                        Vector vel = player.getVelocity();
+                        if (player.isSneaking() && getConfig().getBoolean("settings.shift makes players go down")) {
+                            vel.setX(getConfig().getDouble("beacons." + b.getX() + ".Vector X (holding shift)", 0));
+                            vel.setY(getConfig().getDouble("beacons." + b.getX() + ".Vector Y (holding shift)", -.2));
+                            vel.setZ(getConfig().getDouble("beacons." + b.getX() + ".Vector Z (holding shift)", 0));
+                        } else {
+                            vel.setX(getConfig().getDouble("beacons." + b.getX() + ".Vector X", 0));
+                            vel.setY(getConfig().getDouble("beacons." + b.getX() + ".Vector Y", 1));
+                            vel.setZ(getConfig().getDouble("beacons." + b.getX() + ".Vector Z", 0));
                         }
+                        if (getConfig().getBoolean("settings.prevent players from taking damage"))
+                            players.add(player.getUniqueId());
+                        player.setVelocity(vel);
                     }
                 }
             }
@@ -104,13 +127,13 @@ public class BeamMeScottie extends JavaPlugin {
                                     getConfig().set("beacons." + b.getX() + ".Vector X", 0);
                                     getConfig().set("beacons." + b.getX() + ".Vector Y", 1);
                                     getConfig().set("beacons." + b.getX() + ".Vector Z", 0);
-                                    getConfig().set("beacons."+b.getX()+".Vector X (holding shift)", 0);
-                                    getConfig().set("beacons."+b.getX()+".Vector Y (holding shift)", -.2);
-                                    getConfig().set("beacons."+b.getX()+".Vector Z (holding shift)", 0);
+                                    getConfig().set("beacons." + b.getX() + ".Vector X (holding shift)", 0);
+                                    getConfig().set("beacons." + b.getX() + ".Vector Y (holding shift)", -.2);
+                                    getConfig().set("beacons." + b.getX() + ".Vector Z (holding shift)", 0);
                                     saveConfig();
                                 }
                             }
-                            if(!found){
+                            if (!found) {
                                 send(sender, getConfig().getString("variables.no such beacon under user"));
                                 return true;
                             }
@@ -127,13 +150,13 @@ public class BeamMeScottie extends JavaPlugin {
                                     }
                                 }
                             }
-                            if(!found){
+                            if (!found) {
                                 send(sender, getConfig().getString("variables.no such beacon under user"));
                                 return true;
                             }
                         }
                     } else {
-                        sender.sendMessage(getConfig().getString("variables.no permission"));
+                        send(sender, getConfig().getString("variables.no permission"));
                     }
                 } else {
                     if (args[0].equalsIgnoreCase("remove")) {
@@ -148,8 +171,8 @@ public class BeamMeScottie extends JavaPlugin {
                             getConfig().set("beacons." + i, null);
                             send(sender, getConfig().getString("variables.beacon has been removed").replace("%x%", i + ""));
                             saveConfig();
-                        }else {
-                            send(sender, getConfig().getString("variables.no such beacon").replace("%x%", i+""));
+                        } else {
+                            send(sender, getConfig().getString("variables.no such beacon").replace("%x%", i + ""));
                         }
                     }
                 }

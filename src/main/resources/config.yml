@@ -3,9 +3,9 @@ settings:
     use beams: MagicBeam.use
     modify: MagicBeam.modify
   metrics: true
-  sound: ENTITY_ENDERMAN_TELEPORT
   shift makes players go down: true
   require beacons to be active: true
+  prevent players from taking damage: true
 variables:
   prefix: "&b[MagicBeam]&f"
   no permission: "%prefix% Sorry, but you don't have permission to use this command."
