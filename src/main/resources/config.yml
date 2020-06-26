@@ -1,0 +1,27 @@
+settings:
+  permission:
+    use beams: MagicBeam.use
+    modify: MagicBeam.modify
+  metrics: true
+  sound: ENTITY_ENDERMAN_TELEPORT
+  shift makes players go down: true
+  require beacons to be active: true
+variables:
+  prefix: "&b[MagicBeam]&f"
+  no permission: "%prefix% Sorry, but you don't have permission to use this command."
+  sorry but only console: "%prefix% Sorry, but only console may use this command."
+  success message: "%prefix% Beacon block as been added with the following arguments:"
+  success message vector X: "&cVector X: 0"
+  success message vector Y: "&cVector Y: 1"
+  success message vector Z: "&cVector Z: 0; &fChange these in the config!"
+  beacon has been removed: "Beacon at X %x% has been removed."
+  no such beacon under user: "%prefix% Sorry, but there isn't a beacon located under you."
+  no such beacon: "%prefix% Beacon doesn't exist at X%x%!"
+  invalid number for beacon: "%prefix% Sorry, but please use a Double for removing beacons."
+  failed to play sound: "%prefix% Failed to play sound, perhaps the name is incorrect?"
+  incorrect arguments: "%prefix% Incorrect arguments."
+beacons:
+  0:
+    Vector X: 0
+    Vector Y: 0
+    Vector Z: 0

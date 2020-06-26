@@ -1,0 +1,15 @@
+name: MagicBeam
+main: com.github.Jochyoua.MagicBeam.BeamMeScottie
+version: 1.0
+description: simple beacon plugins that zooms you into the air!
+authors: [Jochyoua]
+api-version: 1.15
+load: POSTWORLD
+commands:
+  magicbeam:
+    description: Main command for MagicBeam
+    aliases: [mb]
+permissions:
+  MagicBeams.use:
+    description: Should user be able to use Beacons?
+    default: true
