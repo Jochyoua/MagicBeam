@@ -4,6 +4,7 @@ import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.block.Beacon;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
@@ -14,7 +15,10 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
@@ -32,10 +36,23 @@ public class BeamMeScottie extends JavaPlugin {
     public Block isInBeacon(Player player) {
         for (int y = player.getLocation().getBlockY(); y >= 0; y--) {
             Block b = player.getLocation().getWorld().getBlockAt(player.getLocation().getBlockX(), y, player.getLocation().getBlockZ());
-            if (b.getType() == Material.BEACON && getConfig().isSet("beacons." + b.getX())
-                    && !(((Beacon) b.getState()).getTier() == 0 && getConfig().getBoolean("settings.require beacons to be active"))) {
+            Material beacon;
+            try {
+                beacon = Material.valueOf(getConfig().getString("settings.block to listen for", "BEACON").toUpperCase());
+            } catch (IllegalArgumentException ex) {
+                beacon = Material.valueOf("BEACON");
+                getConfig().set("settings.block to listen for", "BEACON");
+                saveConfig();
+                send(Bukkit.getConsoleSender(), getConfig().getString("variables.incorrect name for listen for block").replace("%name%", getConfig().getString("settings.block to listen for")));
+            }
+            if (b.getType().equals(beacon) && getConfig().isSet("beacons." + b.getX())) {
+                if (b.getType() == Material.BEACON) {
+                    if ((((Beacon) b.getState()).getTier() == 0) && getConfig().getBoolean("settings.require beacons to be active"))
+                        return null;
+                }
                 return b;
             }
+
         }
         return null;
     }
@@ -49,7 +66,7 @@ public class BeamMeScottie extends JavaPlugin {
                         + "This is a toggleable swear filter for your players\n"
                         + "Resource: https://www.spigotmc.org/resources/54115/\n"
                         + "Github: https://www.github.com/Jochyoua/MagicBeam/\n"
-                        + "\n\nIf you want to disable use permission, just set the permission to none! Also, if you want to set the sounds to be disabled just set that to none too!\nSounds can be found here: - Sounds: https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Sound.html ");
+                        + "\n\nIf you want to disable use permission, just set the permission to none! Also, if you want to set the sounds to be disabled just set that to none too!\nSounds can be found here: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Sound.html\n\nDisable protection from fall damage by changing settings,protect users from damage time to 0");
         getConfig().options().copyDefaults(true);
         saveConfig();
         if (getConfig().getBoolean("settings.metrics")) {
@@ -57,12 +74,33 @@ public class BeamMeScottie extends JavaPlugin {
         }
         // Time to load in some listener events!! :)
         getServer().getPluginManager().registerEvents(new Listener() {
-            @EventHandler
+            final PotionEffect potion = new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, Integer.MAX_VALUE, Integer.MAX_VALUE, true, false);
+            /*@EventHandler
             public void fallDamage(EntityDamageEvent e) {
                 if (!(e.getEntity() instanceof Player) || !getConfig().getBoolean("settings.prevent players from taking damage"))
                     return;
                 Player player = (Player) e.getEntity();
                 if (players.contains(player.getUniqueId()) || isInBeacon(player) != null) {
+                        player.setAllowFlight(false);
+                    debug("Cancelled fall damage for player " + player.getName() + " and removed from no fall list");
+                    e.setCancelled(true);
+                    players.remove(player.getUniqueId());
+                }
+            }*/
+
+            @EventHandler
+            public void onPlayerLeave(PlayerQuitEvent e) {
+                Player player = e.getPlayer();
+                if (players.contains(e.getPlayer().getUniqueId()) && getConfig().getBoolean("settings.prevent players from taking damage")) {
+                    players.remove(e.getPlayer().getUniqueId());
+                    if (getConfig().getBoolean("settings.prevent player kicking while in air"))
+                        player.setAllowFlight(false);
+                }
+            }
+
+            @EventHandler
+            public void entityDamage(EntityDamageEvent e) {
+                if (e.getEntity() instanceof org.bukkit.entity.Player && e.getCause().equals(EntityDamageEvent.DamageCause.FALL) && players.contains(e.getEntity().getUniqueId())) {
                     e.setCancelled(true);
                 }
             }
@@ -71,8 +109,18 @@ public class BeamMeScottie extends JavaPlugin {
             public void onPlayerMove(PlayerMoveEvent e) {
                 Player player = e.getPlayer();
                 boolean permission;
-                if (players.contains(player.getUniqueId()) && player.isOnGround() && getConfig().getBoolean("settings.prevent players from taking damage")) {
+                if (players.contains(player.getUniqueId()) && player.isOnGround() && isInBeacon(player) == null) {
+                    debug(player.getName() + " has been removed from the no fall list.");
                     players.remove(player.getUniqueId());
+                    if (getConfig().getBoolean("settings.prevent player kicking while in air"))
+                        player.setAllowFlight(false);
+                    if (!getConfig().getString("settings.sounds.player leave sound").equalsIgnoreCase("none")) {
+                        try {
+                            player.playSound(player.getLocation(), Sound.valueOf(getConfig().getString("settings.sounds.leave sound")), 1, 1);
+                        } catch (Exception ignored) {
+                            send(Bukkit.getConsoleSender(), getConfig().getString("variables.failed to play sound").replace("%type%", "leave sound"));
+                        }
+                    }
                 }
                 if (getConfig().getString("settings.permission.use beams").equalsIgnoreCase("none"))
                     permission = true;
@@ -92,8 +140,21 @@ public class BeamMeScottie extends JavaPlugin {
                             vel.setY(getConfig().getDouble("beacons." + b.getX() + ".Vector Y", 1));
                             vel.setZ(getConfig().getDouble("beacons." + b.getX() + ".Vector Z", 0));
                         }
-                        if (getConfig().getBoolean("settings.prevent players from taking damage"))
+                        if (getConfig().getBoolean("settings.prevent players from taking damage") && !players.contains(player.getUniqueId())) {
+                            debug(player.getName() + " has been added to the no fall list.");
                             players.add(player.getUniqueId());
+                            if (getConfig().getBoolean("settings.prevent player kicking while in air"))
+                                player.setAllowFlight(true);
+                            // play sounds
+                            if (!getConfig().getString("settings.sounds.player enter sound").equalsIgnoreCase("none")) {
+                                try {
+                                    player.playSound(player.getLocation(), Sound.valueOf(getConfig().getString("settings.sounds.enter sound")), 1, 1);
+                                } catch (Exception ignored) {
+                                    send(Bukkit.getConsoleSender(), getConfig().getString("variables.failed to play sound").replace("%type%", "enter sound"));
+                                }
+                            }
+                            players.add(player.getUniqueId());
+                        }
                         player.setVelocity(vel);
                     }
                 }
@@ -118,7 +179,7 @@ public class BeamMeScottie extends JavaPlugin {
                             boolean found = false;
                             for (int y = player.getLocation().getBlockY(); y >= 0; y--) {
                                 Block b = player.getLocation().getWorld().getBlockAt(player.getLocation().getBlockX(), y, player.getLocation().getBlockZ());
-                                if (b.getType() == Material.BEACON) {
+                                if (b.getType() == Material.matchMaterial(getConfig().getString("settings.block to listen for", "BEACON"))) {
                                     found = true;
                                     send(sender, "Found beacon block at Y" + y + "!");
                                     send(sender, getConfig().getString("variables.success message vector X"));
@@ -141,7 +202,7 @@ public class BeamMeScottie extends JavaPlugin {
                             boolean found = false;
                             for (int y = player.getLocation().getBlockY(); y >= 0; y--) {
                                 Block b = player.getLocation().getWorld().getBlockAt(player.getLocation().getBlockX(), y, player.getLocation().getBlockZ());
-                                if (b.getType() == Material.BEACON) {
+                                if (b.getType() == Material.matchMaterial(getConfig().getString("settings.block to listen for", "BEACON"))) {
                                     if (getConfig().isSet("beacons." + b.getX())) {
                                         found = true;
                                         getConfig().set("beacons." + b.getX(), null);
@@ -193,5 +254,10 @@ public class BeamMeScottie extends JavaPlugin {
             return;
         message = prepare(player, message);
         player.spigot().sendMessage(new TextComponent(message));
+    }
+
+    public void debug(String str) {
+        if (plugin.getConfig().getBoolean("settings.debug"))
+            send(Bukkit.getConsoleSender(), plugin.getConfig().getString("variables.debug template").replace("%message%", str));
     }
 }
