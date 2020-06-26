@@ -21,7 +21,3 @@ variables:
   failed to play sound: "%prefix% Failed to play sound, perhaps the name is incorrect?"
   incorrect arguments: "%prefix% Incorrect arguments."
 beacons:
-  0:
-    Vector X: 0
-    Vector Y: 0
-    Vector Z: 0
