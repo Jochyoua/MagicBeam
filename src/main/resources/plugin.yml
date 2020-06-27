@@ -1,6 +1,6 @@
 name: MagicBeam
 main: com.github.Jochyoua.MagicBeam.BeamMeScottie
-version: 1.3
+version: 1.4
 description: simple beacon plugins that zooms you into the air!
 authors: [Jochyoua]
 api-version: 1.15

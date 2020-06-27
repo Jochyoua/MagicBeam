@@ -5,26 +5,36 @@ settings:
     modify: MagicBeam.modify
   metrics: true
   debug: false
+  check for updates: true
   shift makes players go down: true
   require beacons to be active: true
   prevent player kicking while in air: true
+  prevent players from taking damage: true
   sounds:
     enter sound: ENTITY_ENDERMAN_TELEPORT
     leave sound: none
 variables:
-  prefix: "&b[MagicBeam]&f"
+  prefix: "&b[MagicBeam]&d"
+  created beacon: "%prefix% Created beacon!\n&cID: %ID%"
+  found update: "%prefix% Found an update! v(%version%) https://www.spigotmc.org/resources/80695/"
+  info message: "%prefix% Info for &f%ID%&b:\n&bVector X: &f%x%\n&bVector Y: &f%y%\n&bVector Z: &f%z%\n&b(Shift) Vector X: &f%sx%\n&b(Shift) Vector Y: &f%sy%\n&b(Shift) Vector Z: &f%sz%\n&bCords: &f%cords%"
+  info list: "%prefix% There is %count% beacons!"
+  info list template: "&bID: &f%ID%\n&bCords: &f%cords%\n&b-----"
   no permission: "%prefix% Sorry, but you don't have permission to use this command."
   debug template: "%prefix% &dDEBUG: &f%message%"
   sorry but only console: "%prefix% Sorry, but only console may use this command."
   success message: "%prefix% Beacon block as been added with the following arguments:"
-  success message vector X: "&cVector X: 0"
-  success message vector Y: "&cVector Y: 1"
-  success message vector Z: "&cVector Z: 0; &fChange these in the config!"
-  beacon has been removed: "Beacon at X %x% has been removed."
+  success message vector X: "&bVector X: &f0"
+  success message vector Y: "&bVector Y: &f1"
+  success message vector Z: "&bVector Z: &f0; &bChange these in the config!"
+  beacon has been removed: "%prefix% Beacon with ID %ID% has been removed."
   no such beacon under user: "%prefix% Sorry, but there isn't a beacon located under you."
-  no such beacon: "%prefix% Beacon doesn't exist at X%x%!"
+  no such beacon: "%prefix% Beacon doesn't exist with ID %ID%!"
   invalid number for beacon: "%prefix% Sorry, but please use a Double for removing beacons."
   failed to play sound: "%prefix% Failed to play sound for %type%, perhaps the name is incorrect?"
   incorrect arguments: "%prefix% Incorrect arguments."
+  incorrect value: "%prefix% Incorrect value (%value%), must be a %needed%."
+  successfully set value: "%prefix% successfully set %type% to %value% for %ID%"
   incorrect name for listen for block: "%prefix% Invalid block name (%name%)! Reverting to original value."
+  help message: "%prefix% &dHi! Please use one of these commands:\n&d/MagicBeams add | Adds a block to the beacon list\n&d/MagicBeams remove <ID> | Removes a block from the beacon list"
 beacons:
